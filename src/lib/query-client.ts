@@ -4,7 +4,8 @@ function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60 * 1000
+        retry: 1,
+        staleTime: 30 * 1000
       },
       dehydrate: {
         shouldDehydrateQuery: (query) =>

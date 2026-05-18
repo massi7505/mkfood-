@@ -1,10 +1,33 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
+function getDolibarrRemotePattern() {
+  if (!process.env.DOLIBARR_API_URL) return [];
+
+  try {
+    const url = new URL(process.env.DOLIBARR_API_URL);
+    return [
+      {
+        protocol: url.protocol.replace(':', '') as 'http' | 'https',
+        hostname: url.hostname,
+        port: url.port,
+        pathname: '/**'
+      }
+    ];
+  } catch {
+    return [];
+  }
+}
+
 // Define the base Next.js configuration
 const baseConfig: NextConfig = {
   output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
+  turbopack: {
+    root: process.cwd()
+  },
   images: {
+    formats: ['image/webp'],
+    imageSizes: [32, 64, 128, 256, 384, 512],
     remotePatterns: [
       {
         protocol: 'https',
@@ -20,7 +43,8 @@ const baseConfig: NextConfig = {
         protocol: 'https',
         hostname: 'clerk.com',
         port: ''
-      }
+      },
+      ...getDolibarrRemotePattern()
     ]
   },
   transpilePackages: ['geist'],

@@ -6,6 +6,13 @@
 
 @import './theme.css';
 
+@theme {
+  --color-accent: #2563eb;
+  --color-accent-foreground: #ffffff;
+  --font-display: var(--font-sans);
+  --font-price: var(--font-mono);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
