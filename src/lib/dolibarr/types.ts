@@ -6,6 +6,14 @@ export interface DolibarrProduct {
   price?: string;
   price_ht?: string;
   price_ttc?: string;
+  price_min?: string;
+  price_min_ht?: string;
+  price_min_ttc?: string;
+  cost_price?: string;
+  pmp?: string;
+  buyprice?: string;
+  buying_price?: string;
+  last_purchase_price?: string;
   price_base_type?: 'HT' | 'TTC';
   tva_tx?: string;
   stock_reel?: number | string;

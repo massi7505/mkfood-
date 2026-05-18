@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { signOut, useSession } from 'next-auth/react';
 
-export function AdminHeader() {
+export function AdminHeader({ appSettings }: { appSettings: { companyName: string } }) {
   const { data: session } = useSession();
 
   return (
@@ -23,7 +23,7 @@ export function AdminHeader() {
         <SidebarTrigger className='-ml-1' />
         <Separator orientation='vertical' className='mr-2 h-4' />
         <div className='min-w-0'>
-          <p className='truncate text-sm font-semibold'>Interface admin</p>
+          <p className='truncate text-sm font-semibold'>{appSettings.companyName}</p>
           <p className='text-muted-foreground truncate text-xs'>Modules internes uniquement</p>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { AdminCommerceOverview } from '@/components/admin/admin-commerce-overview';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { adminNav } from '@/config/admin-nav';
@@ -61,6 +62,8 @@ export default async function AdminPage() {
           </Card>
         ))}
       </section>
+
+      <AdminCommerceOverview />
 
       <section className='grid gap-3 md:grid-cols-2 xl:grid-cols-3'>
         {adminNav

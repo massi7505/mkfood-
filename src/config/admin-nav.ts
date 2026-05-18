@@ -1,54 +1,50 @@
-import {
-  BadgeEuro,
-  ClipboardList,
-  FileText,
-  LayoutDashboard,
-  Package,
-  Truck,
-  Users,
-  type LucideIcon
-} from 'lucide-react';
+import { Icons, type Icon } from '@/components/icons';
 
 export interface AdminNavItem {
-  icon: LucideIcon;
+  icon: Icon;
   href: string;
   label: string;
 }
 
 export const adminNav: AdminNavItem[] = [
   {
-    icon: LayoutDashboard,
+    icon: Icons.dashboard,
     href: '/admin',
     label: 'Admin'
   },
   {
-    icon: ClipboardList,
+    icon: Icons.forms,
     href: '/admin/orders',
     label: 'Commandes'
   },
   {
-    icon: FileText,
+    icon: Icons.post,
     href: '/admin/invoices',
     label: 'Facturation'
   },
   {
-    icon: Package,
+    icon: Icons.product,
     href: '/admin/products',
     label: 'Produits'
   },
   {
-    icon: BadgeEuro,
+    icon: Icons.billing,
     href: '/admin/accounting',
     label: 'Comptabilite'
   },
   {
-    icon: Users,
+    icon: Icons.teams,
     href: '/admin/users',
     label: 'Utilisateurs'
   },
   {
-    icon: Truck,
+    icon: Icons.truckDelivery,
     href: '/admin/delivery',
     label: 'Livreurs'
+  },
+  {
+    icon: Icons.homeCog,
+    href: '/admin/settings',
+    label: 'Parametres'
   }
 ];

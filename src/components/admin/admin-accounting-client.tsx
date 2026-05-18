@@ -15,13 +15,22 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import type { DolibarrInvoice, DolibarrOrder } from '@/lib/dolibarr/types';
+import type { DolibarrInvoice, DolibarrOrder, DolibarrProduct } from '@/lib/dolibarr/types';
 import { formatInvoiceDate, getInvoiceDate, invoiceDateIso } from '@/lib/invoices/format';
 import { getInvoiceDelay, isInvoiceOverdue } from '@/lib/invoices/reminders';
 import { getInvoiceStatus, isInvoicePaid } from '@/lib/invoices/status';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useMemo, useState, type ReactNode } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from 'recharts';
 
 interface PortalUserSummary {
   email: string;
@@ -48,6 +57,10 @@ interface AdminOrdersResponse {
   orders: AdminOrder[];
 }
 
+interface AdminProductsResponse {
+  products: DolibarrProduct[];
+}
+
 interface ApiErrorPayload {
   error?: string;
 }
@@ -64,6 +77,19 @@ interface ClientExposure {
   totalInvoiced: number;
   paidAmount: number;
   remainingDue: number;
+}
+
+interface ProductMarginSummary {
+  soldHt: number;
+  soldTtc: number;
+  collectedTva: number;
+  purchaseCost: number;
+  profit: number;
+  marginRate: number;
+  minSaleHt: number;
+  belowMinCount: number;
+  missingCostCount: number;
+  lineCount: number;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -194,6 +220,108 @@ function invoiceReferencesOrder(invoice: AdminInvoice, order: AdminOrder) {
   return linkedValues.some((value) => JSON.stringify(value).includes(orderId));
 }
 
+function getOrderDate(order: AdminOrder) {
+  const timestamp = Number(order.date_commande ?? 0);
+  return timestamp > 0 ? new Date(timestamp * 1000) : null;
+}
+
+function getProductNumber(product: DolibarrProduct | undefined, keys: Array<keyof DolibarrProduct>) {
+  if (!product) return 0;
+
+  for (const key of keys) {
+    const value = Number(product[key] ?? 0);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+
+  return 0;
+}
+
+function getProductSalePriceHt(product: DolibarrProduct | undefined) {
+  const priceHt = getProductNumber(product, ['price_ht', 'price']);
+  if (priceHt > 0) return priceHt;
+
+  const priceTtc = getProductNumber(product, ['price_ttc']);
+  const vatRate = Number(product?.tva_tx ?? 0);
+  return priceTtc > 0 && vatRate > 0 ? priceTtc / (1 + vatRate / 100) : priceTtc;
+}
+
+function getProductMinSalePriceHt(product: DolibarrProduct | undefined) {
+  const priceMinHt = getProductNumber(product, ['price_min_ht', 'price_min']);
+  if (priceMinHt > 0) return priceMinHt;
+
+  const priceMinTtc = getProductNumber(product, ['price_min_ttc']);
+  const vatRate = Number(product?.tva_tx ?? 0);
+  return priceMinTtc > 0 && vatRate > 0 ? priceMinTtc / (1 + vatRate / 100) : priceMinTtc;
+}
+
+function getProductPurchasePriceHt(product: DolibarrProduct | undefined) {
+  return getProductNumber(product, [
+    'cost_price',
+    'pmp',
+    'buyprice',
+    'buying_price',
+    'last_purchase_price'
+  ]);
+}
+
+function getProductVatRate(product: DolibarrProduct | undefined, lineVat: unknown) {
+  const productVat = Number(product?.tva_tx ?? 0);
+  const fallbackVat = Number(lineVat ?? 0);
+  if (Number.isFinite(productVat) && productVat > 0) return productVat;
+  if (Number.isFinite(fallbackVat) && fallbackVat > 0) return fallbackVat;
+  return 0;
+}
+
+function getProductMarginSummary(
+  orders: AdminOrder[],
+  products: DolibarrProduct[]
+): ProductMarginSummary {
+  const productById = new Map(products.map((product) => [String(product.id), product]));
+  const productByRef = new Map(products.map((product) => [product.ref, product]));
+
+  return orders.reduce<ProductMarginSummary>(
+    (summary, order) => {
+      for (const line of order.lines ?? []) {
+        const product =
+          productById.get(String(line.fk_product ?? '')) ||
+          productByRef.get(line.product_ref ?? '');
+        const qty = Number(line.qty ?? 0);
+        const soldHt = Number(line.total_ht ?? 0) || qty * Number(line.subprice ?? 0);
+        const productSaleHt = getProductSalePriceHt(product);
+        const purchaseUnitHt = getProductPurchasePriceHt(product);
+        const minSaleUnitHt = getProductMinSalePriceHt(product);
+        const vatRate = getProductVatRate(product, line.tva_tx);
+        const purchaseCost = purchaseUnitHt * qty;
+        const minSaleHt = minSaleUnitHt * qty;
+
+        summary.soldHt += soldHt;
+        summary.soldTtc += Number(line.total_ttc ?? 0) || soldHt * (1 + vatRate / 100);
+        summary.collectedTva += soldHt * (vatRate / 100);
+        summary.purchaseCost += purchaseCost;
+        summary.profit += soldHt - purchaseCost;
+        summary.minSaleHt += minSaleHt || productSaleHt * qty;
+        summary.belowMinCount += minSaleUnitHt > 0 && soldHt < minSaleHt ? 1 : 0;
+        summary.missingCostCount += purchaseUnitHt <= 0 ? 1 : 0;
+        summary.lineCount += 1;
+      }
+
+      return summary;
+    },
+    {
+      soldHt: 0,
+      soldTtc: 0,
+      collectedTva: 0,
+      purchaseCost: 0,
+      profit: 0,
+      marginRate: 0,
+      minSaleHt: 0,
+      belowMinCount: 0,
+      missingCostCount: 0,
+      lineCount: 0
+    }
+  );
+}
+
 export function AdminAccountingClient() {
   const queryClient = useQueryClient();
   const [activeView, setActiveView] = useState<AccountingView>('sales');
@@ -213,9 +341,16 @@ export function AdminAccountingClient() {
     staleTime: 0,
     refetchOnWindowFocus: true
   });
+  const productsQuery = useQuery({
+    queryKey: ['admin-products'],
+    queryFn: () => fetchJson<AdminProductsResponse>('/api/admin/products?limit=500'),
+    staleTime: 0,
+    refetchOnWindowFocus: true
+  });
 
   const invoices = useMemo(() => invoicesQuery.data?.invoices ?? [], [invoicesQuery.data?.invoices]);
   const orders = useMemo(() => ordersQuery.data?.orders ?? [], [ordersQuery.data?.orders]);
+  const products = useMemo(() => productsQuery.data?.products ?? [], [productsQuery.data?.products]);
   const filteredInvoices = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
@@ -239,6 +374,29 @@ export function AdminAccountingClient() {
       return matchesSearch && matchesFrom && matchesTo;
     });
   }, [dateFrom, dateTo, invoices, search]);
+  const filteredOrdersForMargin = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return orders.filter((order) => {
+      const orderDate = getOrderDate(order);
+      const haystack = [
+        order.ref,
+        getOrderCustomer(order),
+        order.portalUser?.email,
+        order.portalUser?.phone,
+        order.portalUser?.mobile,
+        (order.lines ?? []).map((line) => `${line.product_ref} ${line.product_label}`).join(' ')
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
+      const matchesFrom = dateFrom && orderDate ? orderDate >= new Date(dateFrom) : true;
+      const matchesTo = dateTo && orderDate ? orderDate <= new Date(`${dateTo}T23:59:59`) : true;
+
+      return matchesSearch && matchesFrom && matchesTo;
+    });
+  }, [dateFrom, dateTo, orders, search]);
 
   const clientExposures = useMemo(() => getClientExposures(filteredInvoices), [filteredInvoices]);
   const openInvoices = filteredInvoices.filter((invoice) => !isInvoicePaid(invoice));
@@ -257,6 +415,21 @@ export function AdminAccountingClient() {
       sum + Math.max(Number(invoice.total_ttc ?? 0) - Number(invoice.remaintopay ?? 0), 0),
     0
   );
+  const productMargin = useMemo(() => {
+    const summary = getProductMarginSummary(filteredOrdersForMargin, products);
+    return {
+      ...summary,
+      marginRate: summary.soldHt > 0 ? (summary.profit / summary.soldHt) * 100 : 0
+    };
+  }, [filteredOrdersForMargin, products]);
+  const taxAndMarginRows = [
+    { label: 'Vente HT', value: productMargin.soldHt },
+    { label: 'TVA', value: productMargin.collectedTva },
+    { label: 'Vente TTC', value: productMargin.soldTtc },
+    { label: 'Achat', value: productMargin.purchaseCost },
+    { label: 'Benefice', value: productMargin.profit },
+    { label: 'Prix min', value: productMargin.minSaleHt }
+  ];
 
   const reconcileRows = useMemo(
     () =>
@@ -275,8 +448,8 @@ export function AdminAccountingClient() {
     [invoices, orders]
   );
 
-  const isLoading = invoicesQuery.isLoading || ordersQuery.isLoading;
-  const isError = invoicesQuery.isError || ordersQuery.isError;
+  const isLoading = invoicesQuery.isLoading || ordersQuery.isLoading || productsQuery.isLoading;
+  const isError = invoicesQuery.isError || ordersQuery.isError || productsQuery.isError;
 
   return (
     <div className='space-y-6'>
@@ -307,6 +480,7 @@ export function AdminAccountingClient() {
             onClick={() => {
               queryClient.invalidateQueries({ queryKey: ['admin-invoices'] });
               queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+              queryClient.invalidateQueries({ queryKey: ['admin-products'] });
             }}
           >
             <Icons.refreshCw className='size-4' />
@@ -321,6 +495,41 @@ export function AdminAccountingClient() {
         <MetricCard label='Versements' value={<PriceDisplay amount={paidAmount} />} detail='Montant deja encaisse' />
         <MetricCard label='Reste du' value={<PriceDisplay amount={remainingDue} />} detail={`${overdueInvoices.length} retard(s)`} />
       </section>
+
+      <Card>
+        <CardHeader className='gap-3'>
+          <div className='flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between'>
+            <div>
+              <CardTitle className='text-base'>Marge, benefice, TVA et taxes</CardTitle>
+              <p className='text-muted-foreground mt-1 text-sm'>
+                Calcul depuis Dolibarr: lignes de commandes, prix d'achat/coût produit, prix de vente, prix minimum et TVA.
+              </p>
+            </div>
+            <Badge variant='outline'>
+              {productMargin.lineCount} ligne(s) produit - {products.length} produit(s)
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className='grid gap-4 xl:grid-cols-[0.9fr_1.2fr]'>
+          <div className='grid gap-3 sm:grid-cols-2'>
+            <MetricCard label='Vente HT lignes' value={<PriceDisplay amount={productMargin.soldHt} />} detail='Prix de vente Dolibarr' />
+            <MetricCard label='Prix achat' value={<PriceDisplay amount={productMargin.purchaseCost} />} detail={`${productMargin.missingCostCount} ligne(s) sans cout`} />
+            <MetricCard label='Benefice' value={<PriceDisplay amount={productMargin.profit} />} detail={`${productMargin.marginRate.toFixed(1)}% de marge`} />
+            <MetricCard label='TVA collectee' value={<PriceDisplay amount={productMargin.collectedTva} />} detail={`${productMargin.belowMinCount} sous prix minimum`} />
+          </div>
+          <div className='h-72 rounded-lg border p-3'>
+            <ResponsiveContainer width='100%' height='100%'>
+              <BarChart data={taxAndMarginRows}>
+                <CartesianGrid strokeDasharray='3 3' vertical={false} />
+                <XAxis dataKey='label' tickLine={false} axisLine={false} />
+                <YAxis tickLine={false} axisLine={false} width={72} />
+                <Tooltip formatter={(value) => `${Number(value).toFixed(2)} EUR`} />
+                <Bar dataKey='value' fill='#2563eb' radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className='gap-3'>

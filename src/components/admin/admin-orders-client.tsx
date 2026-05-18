@@ -25,6 +25,7 @@ import {
   TableRow
 } from '@/components/ui/table';
 import type { DolibarrOrder, DolibarrOrderLine } from '@/lib/dolibarr/types';
+import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -372,6 +373,17 @@ export function AdminOrdersClient() {
   const readyCount = orders.filter(
     (order) => getOrderWorkflow(order).preparationStatus === 'ready'
   ).length;
+  const filteredRevenue = filteredOrders.reduce(
+    (sum, order) => sum + Number(order.total_ttc ?? 0),
+    0
+  );
+  const filteredHt = filteredOrders.reduce((sum, order) => sum + Number(order.total_ht ?? 0), 0);
+  const filteredTva = filteredRevenue - filteredHt;
+  const filteredAverage = filteredOrders.length > 0 ? filteredRevenue / filteredOrders.length : 0;
+  const filteredDue = filteredOrders.reduce(
+    (sum, order) => sum + Math.max(order.accountingSummary?.remainingDue ?? 0, 0),
+    0
+  );
 
   return (
     <div className='min-h-[calc(100vh-5rem)] space-y-5'>
@@ -425,6 +437,48 @@ export function AdminOrdersClient() {
         <MetricCard label='Validees' value={validatedCount} detail='Pretes a facturer' />
         <MetricCard label='Pretes livraison' value={readyCount} detail='Statut preparation admin' />
         <MetricCard label='Facturees' value={billedCount} detail='Commande classee facturee' />
+      </section>
+
+      <section className='grid gap-3 lg:grid-cols-[1.1fr_0.9fr]'>
+        <Card>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-base'>Lecture commerciale des commandes filtrees</CardTitle>
+          </CardHeader>
+          <CardContent className='grid gap-3 sm:grid-cols-4'>
+            <MiniMetric label='Total TTC' value={<PriceDisplay amount={filteredRevenue} />} />
+            <MiniMetric label='Total HT' value={<PriceDisplay amount={filteredHt} />} />
+            <MiniMetric label='TVA' value={<PriceDisplay amount={filteredTva} />} />
+            <MiniMetric label='Panier moyen' value={<PriceDisplay amount={filteredAverage} />} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-base'>Risque paiement</CardTitle>
+          </CardHeader>
+          <CardContent className='space-y-3'>
+            <div className='flex items-center justify-between gap-3'>
+              <span className='text-muted-foreground text-sm'>Reste a encaisser</span>
+              <PriceDisplay amount={filteredDue} className='font-semibold' />
+            </div>
+            <div className='grid grid-cols-3 gap-2 text-center text-xs'>
+              <RiskPill
+                label='Soldes'
+                value={filteredOrders.filter((order) => getPaymentRisk(order) === 'paid').length}
+                className='bg-green-50 text-green-700'
+              />
+              <RiskPill
+                label='Partiels'
+                value={filteredOrders.filter((order) => getPaymentRisk(order) === 'open').length}
+                className='bg-amber-50 text-amber-700'
+              />
+              <RiskPill
+                label='Retards'
+                value={filteredOrders.filter((order) => getPaymentRisk(order) === 'overdue').length}
+                className='bg-red-50 text-red-700'
+              />
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       <section className='grid gap-3 md:grid-cols-4'>
@@ -868,6 +922,32 @@ function MetricCard({
         <p className='text-muted-foreground mt-1 text-sm'>{detail}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className='rounded-md border bg-muted/30 p-3'>
+      <p className='text-muted-foreground text-xs'>{label}</p>
+      <div className='mt-1 text-lg font-semibold'>{value}</div>
+    </div>
+  );
+}
+
+function RiskPill({
+  label,
+  value,
+  className
+}: {
+  label: string;
+  value: number;
+  className: string;
+}) {
+  return (
+    <div className={cn('rounded-md px-3 py-2', className)}>
+      <p className='text-lg font-semibold'>{value}</p>
+      <p>{label}</p>
+    </div>
   );
 }
 

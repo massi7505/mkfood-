@@ -1,5 +1,6 @@
 'use client';
 
+import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -9,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Grid2X2, List } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface SearchFilterProps {
@@ -49,14 +49,17 @@ export function SearchFilter({
   }, [localSearch, onSearchChange]);
 
   return (
-    <div className='space-y-3'>
+    <div className='rounded-lg border bg-white p-3 shadow-xs sm:p-4'>
       <div className='flex flex-col gap-3 md:flex-row md:items-center'>
-        <Input
-          value={localSearch}
-          onChange={(event) => setLocalSearch(event.target.value)}
-          placeholder='Recherche'
-          className='h-10 md:max-w-sm'
-        />
+        <div className='relative md:max-w-sm md:flex-1'>
+          <Icons.search className='text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2' />
+          <Input
+            value={localSearch}
+            onChange={(event) => setLocalSearch(event.target.value)}
+            placeholder='Reference, produit, description'
+            className='h-10 pl-9'
+          />
+        </div>
         <div className='grid flex-1 grid-cols-1 gap-2 min-[420px]:grid-cols-3'>
           <Select value={category} onValueChange={onCategoryChange}>
             <SelectTrigger className='h-10'>
@@ -100,7 +103,7 @@ export function SearchFilter({
             onClick={() => onViewModeChange('grid')}
             aria-label='Vue grille'
           >
-            <Grid2X2 className='size-4' />
+            <Icons.grid className='size-4' />
           </Button>
           <Button
             type='button'
@@ -109,11 +112,28 @@ export function SearchFilter({
             onClick={() => onViewModeChange('list')}
             aria-label='Vue liste'
           >
-            <List className='size-4' />
+            <Icons.list className='size-4' />
           </Button>
         </div>
       </div>
-      <p className='text-muted-foreground text-xs sm:text-sm'>{resultsCount} produits trouves</p>
+      <div className='mt-3 flex flex-wrap items-center justify-between gap-2'>
+        <p className='text-muted-foreground text-xs sm:text-sm'>{resultsCount} produits trouves</p>
+        <Button
+          type='button'
+          variant='ghost'
+          size='sm'
+          className='h-8 px-2 text-xs'
+          onClick={() => {
+            setLocalSearch('');
+            onSearchChange('');
+            onCategoryChange('all');
+            onPriceSortChange('none');
+            onStockFilterChange('all');
+          }}
+        >
+          Reinitialiser
+        </Button>
+      </div>
     </div>
   );
 }

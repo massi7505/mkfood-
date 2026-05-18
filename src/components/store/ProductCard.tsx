@@ -1,11 +1,11 @@
 'use client';
 
+import { Icons } from '@/components/icons';
 import { PriceDisplay } from '@/components/shared/PriceDisplay';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { DolibarrProduct } from '@/lib/dolibarr/types';
-import { Minus, Package, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 
@@ -21,6 +21,8 @@ export function ProductCard({ product, onAdd, viewMode = 'grid' }: ProductCardPr
   const [qty, setQty] = useState(1);
   const [imageError, setImageError] = useState(false);
   const priceHt = Number(product.price_ht ?? product.price ?? 0) || 0;
+  const tvaRate = Number(product.tva_tx ?? 20) || 0;
+  const category = product.array_options?.categoryLabel ?? product.array_options?.category;
 
   function updateQty(nextQty: number) {
     setQty(Math.max(nextQty, 1));
@@ -28,7 +30,11 @@ export function ProductCard({ product, onAdd, viewMode = 'grid' }: ProductCardPr
 
   return (
     <Card
-      className={viewMode === 'list' ? 'rounded-lg py-3 md:py-4' : 'overflow-hidden rounded-lg'}
+      className={
+        viewMode === 'list'
+          ? 'rounded-lg py-3 transition-colors hover:border-blue-200 hover:bg-blue-50/20 md:py-4'
+          : 'overflow-hidden rounded-lg transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md'
+      }
     >
       <CardContent
         className={
@@ -44,6 +50,13 @@ export function ProductCard({ product, onAdd, viewMode = 'grid' }: ProductCardPr
               : 'bg-muted relative aspect-square overflow-hidden rounded-md'
           }
         >
+          <div className='absolute top-2 left-2 z-10 flex flex-wrap gap-1'>
+            {category ? (
+              <Badge className='border-white/70 bg-white/90 text-zinc-800 shadow-sm hover:bg-white'>
+                {category}
+              </Badge>
+            ) : null}
+          </div>
           {!imageError ? (
             <Image
               src={`/api/dolibarr/products/${product.id}/image`}
@@ -60,7 +73,7 @@ export function ProductCard({ product, onAdd, viewMode = 'grid' }: ProductCardPr
             />
           ) : (
             <div className='flex h-full flex-col items-center justify-center gap-2 p-2 text-center'>
-              <Package className='text-muted-foreground size-7' />
+              <Icons.product className='text-muted-foreground size-7' />
               <span className='text-muted-foreground text-[10px] leading-tight font-medium'>
                 Photo indisponible
               </span>
@@ -75,7 +88,17 @@ export function ProductCard({ product, onAdd, viewMode = 'grid' }: ProductCardPr
           <h3 className='line-clamp-2 min-h-10 text-sm leading-snug font-medium'>
             {product.label}
           </h3>
-          <PriceDisplay amount={priceHt} showTva tvaRate={Number(product.tva_tx ?? 20)} />
+          <PriceDisplay amount={priceHt} showTva tvaRate={tvaRate} />
+          <div className='flex flex-wrap gap-1.5'>
+            <Badge variant='outline' className='text-[10px]'>
+              TVA {tvaRate}%
+            </Badge>
+            {stock > 0 && stock <= 5 ? (
+              <Badge className='bg-amber-100 text-amber-900 hover:bg-amber-100'>
+                Stock faible
+              </Badge>
+            ) : null}
+          </div>
           {isOutOfStock ? (
             <div className='space-y-1'>
               <Badge className='border-amber-200 bg-amber-100 text-amber-900 hover:bg-amber-100'>
@@ -106,7 +129,7 @@ export function ProductCard({ product, onAdd, viewMode = 'grid' }: ProductCardPr
               onClick={() => updateQty(qty - 1)}
               aria-label='Diminuer'
             >
-              <Minus className='size-4' />
+              <Icons.minus className='size-4' />
             </Button>
             <input
               className='h-10 min-w-10 flex-1 bg-transparent text-center text-sm font-medium outline-none'
@@ -123,7 +146,7 @@ export function ProductCard({ product, onAdd, viewMode = 'grid' }: ProductCardPr
               onClick={() => updateQty(qty + 1)}
               aria-label='Augmenter'
             >
-              <Plus className='size-4' />
+              <Icons.add className='size-4' />
             </Button>
           </div>
           <Button
@@ -131,6 +154,7 @@ export function ProductCard({ product, onAdd, viewMode = 'grid' }: ProductCardPr
             className='h-10 w-full min-w-0 bg-blue-600 px-3 text-sm hover:bg-blue-700'
             onClick={() => onAdd(qty)}
           >
+            <Icons.cart className='size-4' />
             {isOutOfStock ? 'Precommander' : 'Ajouter'}
           </Button>
         </div>
