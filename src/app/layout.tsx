@@ -10,10 +10,7 @@ import NextTopLoader from 'nextjs-toploader';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import '../styles/globals.css';
 
-const META_THEME_COLORS = {
-  light: '#ffffff',
-  dark: '#09090b'
-};
+const META_THEME_COLOR = '#ffffff';
 
 export const metadata: Metadata = {
   title: 'Portail Client',
@@ -25,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: META_THEME_COLORS.light
+  themeColor: META_THEME_COLOR
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -36,20 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang='fr' suppressHydrationWarning data-theme={themeToApply}>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                // Set meta theme color
-                if (localStorage.theme === 'dark' || ((!('theme' in localStorage) || localStorage.theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '${META_THEME_COLORS.dark}')
-                }
-              } catch (_) {}
-            `
-          }}
-        />
-      </head>
+      <head />
       <body
         className={cn(
           'bg-background overflow-x-hidden overscroll-none font-sans antialiased',
@@ -60,8 +44,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <NuqsAdapter>
           <ThemeProvider
             attribute='class'
-            defaultTheme='system'
-            enableSystem
+            defaultTheme='light'
+            forcedTheme='light'
             disableTransitionOnChange
             enableColorScheme
           >

@@ -374,18 +374,24 @@ export function AdminOrdersClient() {
   ).length;
 
   return (
-    <div className='space-y-6'>
-      <div className='flex flex-col gap-3 border-b pb-5 lg:flex-row lg:items-end lg:justify-between'>
+    <div className='min-h-[calc(100vh-5rem)] space-y-5'>
+      <div className='rounded-lg border bg-white p-4 shadow-xs lg:flex lg:items-end lg:justify-between lg:gap-6'>
         <div>
-          <p className='text-muted-foreground text-sm'>Administration</p>
-          <h1 className='text-2xl font-semibold tracking-normal md:text-3xl'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <p className='text-muted-foreground text-sm'>Administration</p>
+            <Badge variant='outline'>{filteredOrders.length} affichee(s)</Badge>
+            {selectedOrders.length > 0 && (
+              <Badge className='bg-blue-700 text-white'>{selectedOrders.length} selectionnee(s)</Badge>
+            )}
+          </div>
+          <h1 className='mt-1 text-3xl font-semibold tracking-normal md:text-4xl'>
             Commandes clients
           </h1>
-          <p className='text-muted-foreground mt-2 text-sm'>
+          <p className='text-muted-foreground mt-2 max-w-3xl text-sm'>
             Voir qui a commande, les produits, les dates, valider, facturer et corriger les lignes.
           </p>
         </div>
-        <div className='flex flex-wrap gap-2'>
+        <div className='mt-4 flex flex-wrap gap-2 lg:mt-0 lg:justify-end'>
           <Button
             type='button'
             variant='outline'
@@ -444,24 +450,29 @@ export function AdminOrdersClient() {
         />
       </section>
 
-      <Card>
-        <CardHeader className='pb-3'>
-          <CardTitle className='text-base'>
-            Preparation produits {selectedOrders.length > 0 ? `(${selectedOrders.length} selectionnee(s))` : ''}
+      <Card className='overflow-hidden'>
+        <CardHeader className='border-b bg-muted/30 py-3'>
+          <CardTitle className='flex flex-wrap items-center justify-between gap-3 text-base'>
+            <span>
+              Preparation produits {selectedOrders.length > 0 ? `(${selectedOrders.length} selectionnee(s))` : ''}
+            </span>
+            <span className='text-muted-foreground text-xs font-normal'>
+              Base: {selectedOrders.length > 0 ? 'selection' : 'commandes filtrees'}
+            </span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className='p-3'>
           {preparationSummary.length === 0 ? (
             <p className='text-muted-foreground text-sm'>Aucune ligne produit a preparer.</p>
           ) : (
-            <div className='grid gap-2 md:grid-cols-2 xl:grid-cols-3'>
-              {preparationSummary.slice(0, 6).map((line) => (
+            <div className='grid gap-2 md:grid-cols-3 xl:grid-cols-6'>
+              {preparationSummary.slice(0, 6).map((line, index) => (
                 <div
                   key={line.key}
-                  className='flex items-start justify-between gap-3 rounded-md border p-3'
+                  className='flex min-h-20 items-start justify-between gap-3 rounded-md border bg-white p-3'
                 >
                   <div className='min-w-0'>
-                    <p className='text-muted-foreground font-mono text-xs'>{line.ref || '-'}</p>
+                    <p className='text-muted-foreground font-mono text-xs'>#{index + 1} {line.ref || '-'}</p>
                     <p className='truncate text-sm font-medium'>{line.label}</p>
                     <p className='text-muted-foreground text-xs'>{line.orderCount} ligne(s)</p>
                   </div>
@@ -473,9 +484,14 @@ export function AdminOrdersClient() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className='gap-3'>
-          <CardTitle className='text-base'>File commandes</CardTitle>
+      <Card className='overflow-hidden'>
+        <CardHeader className='sticky top-14 z-10 gap-3 border-b bg-white/95 backdrop-blur'>
+          <CardTitle className='flex flex-wrap items-center justify-between gap-3 text-base'>
+            <span>File commandes</span>
+            <span className='text-muted-foreground text-xs font-normal'>
+              {filteredOrders.length} commande(s) · {billedCount} facturee(s) · {readyCount} prete(s)
+            </span>
+          </CardTitle>
           <div className='grid gap-2 md:grid-cols-[1fr_220px_220px]'>
             <Input
               value={search}
@@ -509,19 +525,19 @@ export function AdminOrdersClient() {
             </select>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className='p-0'>
           {isLoading ? (
-            <p className='text-muted-foreground text-sm'>Chargement des commandes...</p>
+            <p className='text-muted-foreground p-4 text-sm'>Chargement des commandes...</p>
           ) : isError ? (
-            <p className='text-sm text-red-600'>Impossible de charger les commandes admin.</p>
+            <p className='p-4 text-sm text-red-600'>Impossible de charger les commandes admin.</p>
           ) : filteredOrders.length === 0 ? (
-            <p className='text-muted-foreground text-sm'>Aucune commande trouvee.</p>
+            <p className='text-muted-foreground p-4 text-sm'>Aucune commande trouvee.</p>
           ) : (
-            <div className='overflow-x-auto rounded-lg border'>
+            <div className='max-h-[calc(100vh-22rem)] min-h-[560px] overflow-auto'>
               <Table>
-                <TableHeader>
+                <TableHeader className='sticky top-0 z-10 bg-muted/95 backdrop-blur'>
                   <TableRow>
-                    <TableHead className='w-10'>
+                    <TableHead className='w-10 bg-muted/95'>
                       <Checkbox
                         checked={allVisibleSelected}
                         onCheckedChange={(checked) => {
@@ -538,7 +554,7 @@ export function AdminOrdersClient() {
                         aria-label='Selectionner les commandes visibles'
                       />
                     </TableHead>
-                    <TableHead>Commande</TableHead>
+                    <TableHead className='min-w-44 bg-muted/95'>Commande</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead>Produits</TableHead>
                     <TableHead>Total</TableHead>
@@ -551,8 +567,8 @@ export function AdminOrdersClient() {
                 </TableHeader>
                 <TableBody>
                   {filteredOrders.map((order) => (
-                    <TableRow key={order.id} className='align-top'>
-                      <TableCell>
+                    <TableRow key={order.id} className='align-top hover:bg-blue-50/40'>
+                      <TableCell className='bg-white/70'>
                         <Checkbox
                           checked={selectedOrderIds.has(order.id)}
                           onCheckedChange={(checked) => {
@@ -569,7 +585,7 @@ export function AdminOrdersClient() {
                           aria-label={`Selectionner ${order.ref}`}
                         />
                       </TableCell>
-                      <TableCell className='min-w-40'>
+                      <TableCell className='min-w-44 bg-white/70'>
                         <button
                           type='button'
                           className='font-mono text-sm font-semibold hover:text-blue-700'
@@ -579,7 +595,7 @@ export function AdminOrdersClient() {
                         </button>
                         <p className='text-muted-foreground mt-1 text-xs'>{getOrderDate(order)}</p>
                       </TableCell>
-                      <TableCell className='min-w-56'>
+                      <TableCell className='min-w-64'>
                         <p className='font-medium'>{getOrderCustomer(order)}</p>
                         <p className='text-muted-foreground text-xs'>
                           {order.portalUser?.email ?? `thirdparty ${order.socid ?? order.fk_soc}`}
@@ -588,7 +604,7 @@ export function AdminOrdersClient() {
                           {order.portalUser?.mobile ?? order.portalUser?.phone ?? ''}
                         </p>
                       </TableCell>
-                      <TableCell className='min-w-72'>
+                      <TableCell className='min-w-80'>
                         <div className='space-y-1'>
                           {(order.lines ?? []).slice(0, 3).map((line) => (
                             <div
@@ -670,8 +686,8 @@ export function AdminOrdersClient() {
                           {getWorkflowDateInputValue(getOrderWorkflow(order)) || 'Date a definir'}
                         </p>
                       </TableCell>
-                      <TableCell className='min-w-72'>
-                        <div className='flex flex-wrap gap-2'>
+                      <TableCell className='min-w-80'>
+                        <div className='grid grid-cols-2 gap-2 xl:grid-cols-3'>
                           <Button
                             type='button'
                             size='sm'

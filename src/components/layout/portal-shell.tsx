@@ -16,12 +16,12 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {isAdminRoute ? <AdminSidebar /> : <PortalSidebar />}
-      <SidebarInset className={isAdminRoute ? 'bg-zinc-50/80 dark:bg-zinc-950' : undefined}>
+      <SidebarInset className={isAdminRoute ? 'bg-zinc-50/80' : undefined}>
         {isAdminRoute ? <AdminHeader /> : <PortalHeader />}
         <main
           className={cn(
-            'mx-auto w-full max-w-7xl px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6',
-            isAdminRoute && 'space-y-5'
+            'mx-auto w-full px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6',
+            isAdminRoute ? 'max-w-none space-y-5' : 'max-w-7xl'
           )}
         >
           {children}
